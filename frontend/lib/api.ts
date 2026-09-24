@@ -69,6 +69,18 @@ export interface LessonDocument {
   updated_at: string;
 }
 
+export interface TutorSource {
+  document_id: string;
+  filename: string;
+  chunk_index: number;
+  similarity: number;
+}
+
+export interface TutorAnswer {
+  answer: string;
+  sources: TutorSource[];
+}
+
 export const MAX_DOCUMENT_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 interface TokenResponse {
@@ -206,5 +218,13 @@ export function deleteDocument(token: string, documentId: string): Promise<void>
   return request<void>(`/api/v1/documents/${documentId}`, {
     method: "DELETE",
     headers: bearerHeaders(token),
+  });
+}
+
+export function askLessonQuestion(token: string, lessonId: string, question: string): Promise<TutorAnswer> {
+  return request<TutorAnswer>(`/api/v1/lessons/${lessonId}/ask`, {
+    method: "POST",
+    headers: bearerHeaders(token, true),
+    body: JSON.stringify({ question }),
   });
 }
