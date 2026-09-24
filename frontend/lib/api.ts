@@ -55,6 +55,22 @@ export interface Enrollment {
   enrolled_at: string;
 }
 
+export type DocumentStatus = "processing" | "ready" | "failed";
+
+export interface LessonDocument {
+  id: string;
+  lesson_id: string;
+  uploaded_by: string;
+  original_filename: string;
+  content_type: string;
+  file_size: number;
+  status: DocumentStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export const MAX_DOCUMENT_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 interface TokenResponse {
   access_token: string;
   token_type: "bearer";
@@ -93,6 +109,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     }
     throw new ApiError(errorMessage(detail, response.status), response.status);
   }
+
+  if (response.status === 204) return undefined as T;
 
   return response.json() as Promise<T>;
 }
@@ -155,6 +173,10 @@ export function createLesson(token: string, courseId: string, input: LessonCreat
   });
 }
 
+export function getLesson(token: string, lessonId: string): Promise<Lesson> {
+  return request<Lesson>(`/api/v1/lessons/${lessonId}`, { headers: bearerHeaders(token) });
+}
+
 export function listMyEnrollments(token: string): Promise<Enrollment[]> {
   return request<Enrollment[]>("/api/v1/users/me/enrollments", { headers: bearerHeaders(token) });
 }
@@ -162,6 +184,27 @@ export function listMyEnrollments(token: string): Promise<Enrollment[]> {
 export function enrollInCourse(token: string, courseId: string): Promise<Enrollment> {
   return request<Enrollment>(`/api/v1/courses/${courseId}/enroll`, {
     method: "POST",
+    headers: bearerHeaders(token),
+  });
+}
+
+export function listLessonDocuments(token: string, lessonId: string): Promise<LessonDocument[]> {
+  return request<LessonDocument[]>(`/api/v1/lessons/${lessonId}/documents`, { headers: bearerHeaders(token) });
+}
+
+export function uploadLessonDocument(token: string, lessonId: string, file: File): Promise<LessonDocument> {
+  const body = new FormData();
+  body.append("file", file);
+  return request<LessonDocument>(`/api/v1/lessons/${lessonId}/documents`, {
+    method: "POST",
+    headers: bearerHeaders(token),
+    body,
+  });
+}
+
+export function deleteDocument(token: string, documentId: string): Promise<void> {
+  return request<void>(`/api/v1/documents/${documentId}`, {
+    method: "DELETE",
     headers: bearerHeaders(token),
   });
 }
