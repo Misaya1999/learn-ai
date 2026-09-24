@@ -292,6 +292,14 @@ Tests use a fresh temporary SQLite database with foreign-key enforcement for spe
 
 ## Run the frontend
 
+The browser-facing API base URL is configured with:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+The F2 authentication UI stores the short-lived bearer access token in `localStorage` and verifies it through `GET /api/v1/users/me` when the application loads. This keeps the portfolio MVP small and compatible with the existing bearer-token backend, but JavaScript-readable storage is exposed if an XSS vulnerability exists. A production system should prefer an HttpOnly, Secure, SameSite cookie/BFF design where appropriate. The backend does not provide refresh tokens, so the frontend does not simulate refresh behavior.
+
 ```bash
 cd frontend
 npm install

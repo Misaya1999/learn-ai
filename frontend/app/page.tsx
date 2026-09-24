@@ -48,8 +48,8 @@ export default function Home() {
             <a className="transition-colors hover:text-indigo-700" href="#engineering">Engineering</a>
           </nav>
           <div className="flex items-center gap-2 sm:gap-3">
-            <button type="button" disabled title="Authentication UI is coming later" className="hidden cursor-not-allowed rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 sm:inline-flex">Sign in</button>
-            <a href="#how-it-works" className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Get started</a>
+            <a href="/login" className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:text-indigo-700 sm:inline-flex">Sign in</a>
+            <a href="/register" className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Get started</a>
           </div>
         </div>
       </header>
@@ -63,8 +63,8 @@ export default function Home() {
               <h1 className="max-w-3xl text-4xl font-bold tracking-[-0.04em] text-slate-950 sm:text-6xl sm:leading-[1.08]">Turn lesson content into an active learning experience.</h1>
               <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl">LearnAI brings a grounded AI Tutor, lesson-based quizzes, and meaningful learning analytics together around the material teachers already use.</p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                <a href="#features" className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Explore the platform <span aria-hidden="true" className="ml-2">→</span></a>
-                <a href="#engineering" className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-base font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50">View the engineering</a>
+                <a href="/register" className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Create an account <span aria-hidden="true" className="ml-2">→</span></a>
+                <a href="#features" className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-base font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50">Explore features</a>
               </div>
             </div>
 
