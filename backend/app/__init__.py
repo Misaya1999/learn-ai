@@ -1,0 +1,2 @@
+"""LearnAI backend application."""
+
