@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LearnAI",
-  description: "AI-powered learning, built one milestone at a time.",
+  title: "LearnAI — Learning grounded in your course materials",
+  description:
+    "An AI-powered EdTech platform with grounded tutoring, lesson-based quizzes, and learning analytics.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -13,4 +14,3 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
-
