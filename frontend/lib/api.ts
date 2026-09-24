@@ -18,6 +18,43 @@ export interface RegisterInput {
   role: UserRole;
 }
 
+export interface Course {
+  id: string;
+  teacher_id: string;
+  title: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CourseCreateInput {
+  title: string;
+  description: string | null;
+}
+
+export interface Lesson {
+  id: string;
+  course_id: string;
+  title: string;
+  content: string | null;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LessonCreateInput {
+  title: string;
+  content: string | null;
+  position: number;
+}
+
+export interface Enrollment {
+  id: string;
+  student_id: string;
+  course_id: string;
+  enrolled_at: string;
+}
+
 interface TokenResponse {
   access_token: string;
   token_type: "bearer";
@@ -80,5 +117,51 @@ export function loginAccount(email: string, password: string): Promise<TokenResp
 export function getCurrentUser(token: string): Promise<User> {
   return request<User>("/api/v1/users/me", {
     headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+function bearerHeaders(token: string, json = false): HeadersInit {
+  return {
+    Authorization: `Bearer ${token}`,
+    ...(json ? { "Content-Type": "application/json" } : {}),
+  };
+}
+
+export function listCourses(token: string): Promise<Course[]> {
+  return request<Course[]>("/api/v1/courses", { headers: bearerHeaders(token) });
+}
+
+export function getCourse(token: string, courseId: string): Promise<Course> {
+  return request<Course>(`/api/v1/courses/${courseId}`, { headers: bearerHeaders(token) });
+}
+
+export function createCourse(token: string, input: CourseCreateInput): Promise<Course> {
+  return request<Course>("/api/v1/courses", {
+    method: "POST",
+    headers: bearerHeaders(token, true),
+    body: JSON.stringify(input),
+  });
+}
+
+export function listCourseLessons(token: string, courseId: string): Promise<Lesson[]> {
+  return request<Lesson[]>(`/api/v1/courses/${courseId}/lessons`, { headers: bearerHeaders(token) });
+}
+
+export function createLesson(token: string, courseId: string, input: LessonCreateInput): Promise<Lesson> {
+  return request<Lesson>(`/api/v1/courses/${courseId}/lessons`, {
+    method: "POST",
+    headers: bearerHeaders(token, true),
+    body: JSON.stringify(input),
+  });
+}
+
+export function listMyEnrollments(token: string): Promise<Enrollment[]> {
+  return request<Enrollment[]>("/api/v1/users/me/enrollments", { headers: bearerHeaders(token) });
+}
+
+export function enrollInCourse(token: string, courseId: string): Promise<Enrollment> {
+  return request<Enrollment>(`/api/v1/courses/${courseId}/enroll`, {
+    method: "POST",
+    headers: bearerHeaders(token),
   });
 }
