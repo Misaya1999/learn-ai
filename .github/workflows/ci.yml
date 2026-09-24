@@ -58,15 +58,23 @@ jobs:
       - name: Create non-superuser application database
         env:
           PG_ADMIN_URL: postgresql://postgres:postgres-ci-only@localhost:5432/postgres
+          PG_ADMIN_APP_DB_URL: postgresql://postgres:postgres-ci-only@localhost:5432/learnai
         run: |
           python - <<'PY'
           import os
           import psycopg
 
           with psycopg.connect(os.environ["PG_ADMIN_URL"], autocommit=True) as connection:
-              connection.execute("CREATE ROLE learnai LOGIN PASSWORD 'learnai-ci-only' NOSUPERUSER NOCREATEDB NOCREATEROLE")
+              connection.execute(
+                  "CREATE ROLE learnai LOGIN PASSWORD 'learnai-ci-only' "
+                  "NOSUPERUSER NOCREATEDB NOCREATEROLE"
+              )
               connection.execute("CREATE DATABASE learnai OWNER learnai")
-          with psycopg.connect(os.environ["PG_ADMIN_URL"].replace("/postgres", "/learnai"), autocommit=True) as connection:
+
+          with psycopg.connect(
+              os.environ["PG_ADMIN_APP_DB_URL"],
+              autocommit=True,
+          ) as connection:
               connection.execute("CREATE EXTENSION IF NOT EXISTS vector")
           PY
       - run: alembic upgrade head
