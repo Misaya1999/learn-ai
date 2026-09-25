@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from app.services.search import SearchMatch
 
 
-def create_lesson(client: TestClient) -> dict[str, object]:
+def create_lesson(client: TestClient) -> tuple[dict[str, object], dict[str, str]]:
     password = "correct-horse-battery-staple"
     registration = client.post(
         "/api/v1/auth/register",
@@ -32,7 +32,7 @@ def create_lesson(client: TestClient) -> dict[str, object]:
     )
     assert registration.status_code == 201
     assert lesson.status_code == 201
-    return lesson.json()
+    return lesson.json(), headers
 
 
 @pytest.mark.parametrize(
@@ -48,7 +48,10 @@ def create_lesson(client: TestClient) -> dict[str, object]:
 def test_semantic_search_validates_query_and_limit(
     client: TestClient, payload: dict[str, object]
 ) -> None:
-    response = client.post(f"/api/v1/lessons/{uuid.uuid4()}/search", json=payload)
+    lesson, headers = create_lesson(client)
+    response = client.post(
+        f"/api/v1/lessons/{lesson['id']}/search", json=payload, headers=headers
+    )
 
     assert response.status_code == 422
 
@@ -56,7 +59,7 @@ def test_semantic_search_validates_query_and_limit(
 def test_semantic_search_response_exposes_only_retrieval_metadata(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    lesson = create_lesson(client)
+    lesson, headers = create_lesson(client)
     document_id = uuid.uuid4()
 
     def fake_search(db, lesson_id, query_embedding, limit):
@@ -77,6 +80,7 @@ def test_semantic_search_response_exposes_only_retrieval_metadata(
     response = client.post(
         f"/api/v1/lessons/{lesson['id']}/search",
         json={"query": "supervised learning", "limit": 3},
+        headers=headers,
     )
 
     assert response.status_code == 200

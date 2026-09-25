@@ -12,7 +12,9 @@ from app.services.search import SearchMatch
 from app.services.tutor import INSUFFICIENT_CONTEXT_ANSWER
 
 
-def create_lesson(client: TestClient, email: str = "tutor@example.com") -> dict:
+def create_lesson(
+    client: TestClient, email: str = "tutor@example.com"
+) -> tuple[dict, dict[str, str]]:
     password = "correct-horse-battery-staple"
     client.post(
         "/api/v1/auth/register",
@@ -31,7 +33,7 @@ def create_lesson(client: TestClient, email: str = "tutor@example.com") -> dict:
         headers=headers,
     )
     assert response.status_code == 201
-    return response.json()
+    return response.json(), headers
 
 
 class RecordingAnswerService:
@@ -56,19 +58,27 @@ def match(document_id=None, chunk_index=0, content="Plants use light.", filename
 
 @pytest.mark.parametrize("question", ["", "   ", "x" * 2001])
 def test_ask_validates_question(client: TestClient, question: str) -> None:
-    response = client.post(f"/api/v1/lessons/{uuid.uuid4()}/ask", json={"question": question})
+    lesson, headers = create_lesson(client)
+    response = client.post(
+        f"/api/v1/lessons/{lesson['id']}/ask",
+        json={"question": question},
+        headers=headers,
+    )
     assert response.status_code == 422
 
 
 def test_ask_returns_not_found_for_unknown_lesson(client: TestClient) -> None:
+    _, headers = create_lesson(client)
     response = client.post(
-        f"/api/v1/lessons/{uuid.uuid4()}/ask", json={"question": "What is this?"}
+        f"/api/v1/lessons/{uuid.uuid4()}/ask",
+        json={"question": "What is this?"},
+        headers=headers,
     )
     assert response.status_code == 404
 
 
 def test_successful_grounded_answer_and_controlled_sources(client, monkeypatch) -> None:
-    lesson = create_lesson(client)
+    lesson, headers = create_lesson(client)
     source = match(chunk_index=4)
     recorder = RecordingAnswerService()
     app.dependency_overrides[get_answer_generation_service] = lambda: recorder
@@ -82,6 +92,7 @@ def test_successful_grounded_answer_and_controlled_sources(client, monkeypatch) 
     response = client.post(
         f"/api/v1/lessons/{lesson['id']}/ask",
         json={"question": " How do plants use light? "},
+        headers=headers,
     )
 
     assert response.status_code == 200
@@ -107,13 +118,15 @@ def test_successful_grounded_answer_and_controlled_sources(client, monkeypatch) 
 
 
 def test_zero_results_returns_deterministic_answer_without_llm(client, monkeypatch) -> None:
-    lesson = create_lesson(client, "empty@example.com")
+    lesson, headers = create_lesson(client, "empty@example.com")
     recorder = RecordingAnswerService()
     app.dependency_overrides[get_answer_generation_service] = lambda: recorder
     monkeypatch.setattr("app.services.tutor.search_lesson_chunks", lambda *args: [])
 
     response = client.post(
-        f"/api/v1/lessons/{lesson['id']}/ask", json={"question": "Unknown?"}
+        f"/api/v1/lessons/{lesson['id']}/ask",
+        json={"question": "Unknown?"},
+        headers=headers,
     )
     assert response.status_code == 200
     assert response.json() == {"answer": INSUFFICIENT_CONTEXT_ANSWER, "sources": []}
@@ -121,7 +134,7 @@ def test_zero_results_returns_deterministic_answer_without_llm(client, monkeypat
 
 
 def test_embedding_failure_is_sanitized(client) -> None:
-    lesson = create_lesson(client, "embed-error@example.com")
+    lesson, headers = create_lesson(client, "embed-error@example.com")
 
     class BrokenEmbedding:
         def embed_text(self, text):
@@ -130,7 +143,9 @@ def test_embedding_failure_is_sanitized(client) -> None:
     from app.services.embedding import get_embedding_service
     app.dependency_overrides[get_embedding_service] = BrokenEmbedding
     response = client.post(
-        f"/api/v1/lessons/{lesson['id']}/ask", json={"question": "Question?"}
+        f"/api/v1/lessons/{lesson['id']}/ask",
+        json={"question": "Question?"},
+        headers=headers,
     )
     assert response.status_code == 502
     assert response.json() == {"detail": "Unable to retrieve lesson context"}
@@ -138,7 +153,7 @@ def test_embedding_failure_is_sanitized(client) -> None:
 
 
 def test_llm_failure_is_sanitized(client, monkeypatch) -> None:
-    lesson = create_lesson(client, "llm-error@example.com")
+    lesson, headers = create_lesson(client, "llm-error@example.com")
     monkeypatch.setattr("app.services.tutor.search_lesson_chunks", lambda *args: [match()])
 
     class BrokenAnswer:
@@ -147,7 +162,9 @@ def test_llm_failure_is_sanitized(client, monkeypatch) -> None:
 
     app.dependency_overrides[get_answer_generation_service] = BrokenAnswer
     response = client.post(
-        f"/api/v1/lessons/{lesson['id']}/ask", json={"question": "Question?"}
+        f"/api/v1/lessons/{lesson['id']}/ask",
+        json={"question": "Question?"},
+        headers=headers,
     )
     assert response.status_code == 502
     assert response.json() == {"detail": "Unable to generate tutor answer"}
@@ -155,14 +172,16 @@ def test_llm_failure_is_sanitized(client, monkeypatch) -> None:
 
 
 def test_search_database_failure_is_sanitized(client, monkeypatch) -> None:
-    lesson = create_lesson(client, "search-error@example.com")
+    lesson, headers = create_lesson(client, "search-error@example.com")
 
     def broken_search(*args):
         raise OperationalError("SELECT secret", {}, RuntimeError("database secret"))
 
     monkeypatch.setattr("app.services.tutor.search_lesson_chunks", broken_search)
     response = client.post(
-        f"/api/v1/lessons/{lesson['id']}/ask", json={"question": "Question?"}
+        f"/api/v1/lessons/{lesson['id']}/ask",
+        json={"question": "Question?"},
+        headers=headers,
     )
     assert response.status_code == 502
     assert response.json() == {"detail": "Unable to retrieve lesson context"}

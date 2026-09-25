@@ -4,12 +4,14 @@ from typing import Annotated
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.course import Course
 from app.models.document import Document
+from app.models.enrollment import Enrollment
 from app.models.lesson import Lesson
 from app.models.user import User
 from app.models.user import UserRole
@@ -97,6 +99,37 @@ def get_owned_lesson(
 
 OwnedCourse = Annotated[Course, Depends(get_owned_course)]
 OwnedLesson = Annotated[Lesson, Depends(get_owned_lesson)]
+
+
+def get_lesson_material_access(
+    lesson_id: uuid.UUID, db: DatabaseSession, current_user: CurrentUser
+) -> Lesson:
+    lesson = db.get(Lesson, lesson_id)
+    if lesson is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
+    course = db.get(Course, lesson.course_id)
+    if course is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
+
+    if current_user.role == UserRole.TEACHER and course.teacher_id == current_user.id:
+        return lesson
+    if current_user.role == UserRole.STUDENT:
+        enrollment_id = db.scalar(
+            select(Enrollment.id).where(
+                Enrollment.student_id == current_user.id,
+                Enrollment.course_id == course.id,
+            )
+        )
+        if enrollment_id is not None:
+            return lesson
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="You do not have access to this lesson",
+    )
+
+
+LessonMaterialAccess = Annotated[Lesson, Depends(get_lesson_material_access)]
 
 
 def get_owned_document(

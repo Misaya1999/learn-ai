@@ -1,14 +1,12 @@
-import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.dependencies import DatabaseSession
+from app.api.dependencies import DatabaseSession, LessonMaterialAccess
 from app.core.config import settings
 from app.schemas.tutor import AnswerSource, AskQuestionRequest, AskQuestionResponse
 from app.services.embedding import EmbeddingService, EmbeddingServiceError, get_embedding_service
-from app.services.lesson import get_lesson
 from app.services.llm import AnswerGenerationService, LLMServiceError, get_answer_generation_service
 from app.services.tutor import answer_lesson_question
 
@@ -21,18 +19,16 @@ TutorAnswerService = Annotated[
 
 @router.post("/lessons/{lesson_id}/ask", response_model=AskQuestionResponse)
 def ask_lesson_question(
-    lesson_id: uuid.UUID,
     request: AskQuestionRequest,
     db: DatabaseSession,
+    lesson: LessonMaterialAccess,
     embedding_service: TutorEmbeddingService,
     answer_service: TutorAnswerService,
 ) -> AskQuestionResponse:
-    if get_lesson(db, lesson_id) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
     try:
         result = answer_lesson_question(
             db=db,
-            lesson_id=lesson_id,
+            lesson_id=lesson.id,
             question=request.question,
             embedding_service=embedding_service,
             answer_service=answer_service,
