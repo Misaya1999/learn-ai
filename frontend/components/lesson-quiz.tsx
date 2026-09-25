@@ -147,7 +147,7 @@ export function LessonQuiz({ token, lessonId, courseId, role, ownsCourse, hasRea
 
   const enrollmentRequired = role === "student" && error === "Enrollment required";
 
-  return <section aria-labelledby="quiz-heading" className="mt-10 rounded-2xl border border-violet-100 bg-white p-6 shadow-sm sm:p-8">
+  return <section aria-labelledby="quiz-heading" className="rounded-2xl border border-violet-100 bg-white p-6 shadow-sm sm:p-8">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div><p className="text-sm font-bold uppercase tracking-[0.18em] text-violet-700">Knowledge check</p><h2 id="quiz-heading" className="mt-2 text-2xl font-bold text-slate-950">Lesson quizzes</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Grounded multiple-choice quizzes generated from this lesson&apos;s processed material. Student answers are graded by the server.</p></div>
       <button type="button" onClick={() => void loadQuizzes()} disabled={loading} className="w-fit rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60">{loading ? "Loading…" : "Refresh"}</button>
