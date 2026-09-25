@@ -81,6 +81,163 @@ export interface TutorAnswer {
   sources: TutorSource[];
 }
 
+export interface QuizSummary {
+  id: string;
+  lesson_id: string;
+  title: string;
+  created_at: string;
+}
+
+export interface QuizOptionStudent {
+  id: string;
+  option_text: string;
+  position: number;
+}
+
+export interface QuizQuestionStudent {
+  id: string;
+  question_text: string;
+  position: number;
+  options: QuizOptionStudent[];
+}
+
+export interface QuizStudent {
+  id: string;
+  lesson_id: string;
+  title: string;
+  questions: QuizQuestionStudent[];
+}
+
+export interface QuizOptionTeacher extends QuizOptionStudent {
+  is_correct: boolean;
+}
+
+export interface QuizQuestionTeacher extends Omit<QuizQuestionStudent, "options"> {
+  explanation: string;
+  options: QuizOptionTeacher[];
+}
+
+export interface QuizTeacher extends Omit<QuizStudent, "questions"> {
+  created_by: string;
+  created_at: string;
+  questions: QuizQuestionTeacher[];
+}
+
+export interface QuizGenerateInput {
+  title: string;
+  question_count: number;
+}
+
+export interface QuizAttemptStart {
+  id: string;
+  quiz: QuizStudent;
+  total_questions: number;
+  started_at: string;
+}
+
+export interface QuizAttemptAnswerInput {
+  question_id: string;
+  selected_option_id: string;
+}
+
+export interface QuizAttemptReviewItem {
+  question_id: string;
+  question_text: string;
+  selected_option_id: string;
+  selected_option_text: string;
+  correct_option_id: string;
+  correct_option_text: string;
+  is_correct: boolean;
+  explanation: string;
+}
+
+export interface QuizAttemptReview {
+  attempt_id: string;
+  quiz_id: string;
+  correct_count: number;
+  total_questions: number;
+  score_percent: string;
+  submitted_at: string;
+  answers: QuizAttemptReviewItem[];
+}
+
+export interface StudentAnalyticsOverview {
+  total_submitted_attempts: number;
+  distinct_quizzes_attempted: number;
+  distinct_lessons_practiced: number;
+  average_score: string | null;
+  best_score: string | null;
+  total_questions_answered: number;
+  total_correct_answers: number;
+  overall_accuracy_percent: string | null;
+}
+
+export interface StudentLessonAnalytics {
+  lesson_id: string;
+  lesson_title: string;
+  submitted_attempts: number;
+  average_score: string;
+  best_score: string;
+  total_questions: number;
+  correct_answers: number;
+  accuracy_percent: string;
+}
+
+export interface StudentProgressPoint {
+  attempt_id: string;
+  quiz_id: string;
+  quiz_title: string;
+  lesson_id: string;
+  lesson_title: string;
+  score_percent: string;
+  submitted_at: string;
+}
+
+export interface CourseAnalyticsOverview {
+  course_id: string;
+  enrolled_students: number;
+  students_with_submitted_attempts: number;
+  total_submitted_attempts: number;
+  average_score: string | null;
+  total_questions_answered: number;
+  total_correct_answers: number;
+  overall_accuracy_percent: string | null;
+}
+
+export interface CourseStudentAnalytics {
+  student_id: string;
+  student_name: string;
+  submitted_attempts: number;
+  average_score: string | null;
+  best_score: string | null;
+  total_questions: number;
+  correct_answers: number;
+  accuracy_percent: string | null;
+}
+
+export interface CourseLessonAnalytics {
+  lesson_id: string;
+  lesson_title: string;
+  quizzes: number;
+  submitted_attempts: number;
+  participating_students: number;
+  average_score: string | null;
+  total_questions: number;
+  correct_answers: number;
+  accuracy_percent: string | null;
+}
+
+export interface CourseQuestionAnalytics {
+  question_id: string;
+  quiz_id: string;
+  question_text: string;
+  lesson_id: string;
+  total_answers: number;
+  correct_answers: number;
+  incorrect_answers: number;
+  accuracy_percent: string | null;
+}
+
 export const MAX_DOCUMENT_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 interface TokenResponse {
@@ -227,4 +384,63 @@ export function askLessonQuestion(token: string, lessonId: string, question: str
     headers: bearerHeaders(token, true),
     body: JSON.stringify({ question }),
   });
+}
+
+export function listLessonQuizzes(token: string, lessonId: string): Promise<QuizSummary[]> {
+  return request<QuizSummary[]>(`/api/v1/lessons/${lessonId}/quizzes`, { headers: bearerHeaders(token) });
+}
+
+export function generateLessonQuiz(token: string, lessonId: string, input: QuizGenerateInput): Promise<QuizTeacher> {
+  return request<QuizTeacher>(`/api/v1/lessons/${lessonId}/quizzes/generate`, {
+    method: "POST",
+    headers: bearerHeaders(token, true),
+    body: JSON.stringify(input),
+  });
+}
+
+export function getTeacherQuiz(token: string, quizId: string): Promise<QuizTeacher> {
+  return request<QuizTeacher>(`/api/v1/quizzes/${quizId}`, { headers: bearerHeaders(token) });
+}
+
+export function startQuizAttempt(token: string, quizId: string): Promise<QuizAttemptStart> {
+  return request<QuizAttemptStart>(`/api/v1/quizzes/${quizId}/attempts`, {
+    method: "POST",
+    headers: bearerHeaders(token),
+  });
+}
+
+export function submitQuizAttempt(token: string, attemptId: string, answers: QuizAttemptAnswerInput[]): Promise<QuizAttemptReview> {
+  return request<QuizAttemptReview>(`/api/v1/quiz-attempts/${attemptId}/submit`, {
+    method: "POST",
+    headers: bearerHeaders(token, true),
+    body: JSON.stringify({ answers }),
+  });
+}
+
+export function getStudentAnalytics(token: string): Promise<StudentAnalyticsOverview> {
+  return request<StudentAnalyticsOverview>("/api/v1/users/me/analytics", { headers: bearerHeaders(token) });
+}
+
+export function getStudentLessonAnalytics(token: string): Promise<StudentLessonAnalytics[]> {
+  return request<StudentLessonAnalytics[]>("/api/v1/users/me/analytics/lessons", { headers: bearerHeaders(token) });
+}
+
+export function getStudentProgress(token: string): Promise<StudentProgressPoint[]> {
+  return request<StudentProgressPoint[]>("/api/v1/users/me/analytics/progress", { headers: bearerHeaders(token) });
+}
+
+export function getCourseAnalytics(token: string, courseId: string): Promise<CourseAnalyticsOverview> {
+  return request<CourseAnalyticsOverview>(`/api/v1/courses/${courseId}/analytics`, { headers: bearerHeaders(token) });
+}
+
+export function getCourseStudentAnalytics(token: string, courseId: string): Promise<CourseStudentAnalytics[]> {
+  return request<CourseStudentAnalytics[]>(`/api/v1/courses/${courseId}/analytics/students`, { headers: bearerHeaders(token) });
+}
+
+export function getCourseLessonAnalytics(token: string, courseId: string): Promise<CourseLessonAnalytics[]> {
+  return request<CourseLessonAnalytics[]>(`/api/v1/courses/${courseId}/analytics/lessons`, { headers: bearerHeaders(token) });
+}
+
+export function getCourseQuestionAnalytics(token: string, courseId: string): Promise<CourseQuestionAnalytics[]> {
+  return request<CourseQuestionAnalytics[]>(`/api/v1/courses/${courseId}/analytics/questions`, { headers: bearerHeaders(token) });
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChangeEvent, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { LessonQuiz } from "@/components/lesson-quiz";
 import { useAuth } from "@/lib/auth-context";
 import {
   ApiError,
@@ -301,6 +302,8 @@ export default function LessonDetailPage() {
             {documentsError && <div role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{documentsError}</div>}
             {documents.length === 0 ? <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center"><h3 className="font-semibold text-slate-900">No documents yet</h3><p className="mt-2 text-slate-600">{ownsCourse ? "Upload the first PDF learning material for this lesson." : "The teacher has not added any PDF material."}</p></div> : <ul className="mt-6 space-y-4">{documents.map((document) => <li key={document.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-3"><h3 className="truncate font-semibold text-slate-950">{document.original_filename}</h3><span className={`rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide ring-1 ring-inset ${statusStyles[document.status]}`}>{document.status}</span></div><p className="mt-2 text-sm text-slate-500">{formatBytes(document.file_size)} · Uploaded {new Date(document.created_at).toLocaleString()}</p>{document.status === "failed" && <p className="mt-2 text-sm text-red-700">Processing failed. The teacher can delete this record and try another text-based PDF.</p>}{document.status === "processing" && <p className="mt-2 text-sm text-amber-700">Processing is currently in progress.</p>}</div>{ownsCourse && <button type="button" disabled={deletingId !== null} onClick={() => void handleDelete(document)} className="shrink-0 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">{deletingId === document.id ? "Deleting…" : "Delete"}</button>}</div></li>)}</ul>}
           </section>
+
+          {token && user && <LessonQuiz token={token} lessonId={lessonId} courseId={courseId} role={user.role} ownsCourse={ownsCourse} hasReadyDocuments={hasReadyDocuments} onUnauthorized={handleUnauthorized} />}
         </>}
       </main>
     </AppShell>
