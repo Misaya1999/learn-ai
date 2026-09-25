@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir --requirement requirements.txt \
 COPY alembic.ini ./alembic.ini
 COPY alembic ./alembic
 COPY app ./app
+COPY scripts ./scripts
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
 RUN mkdir -p /app/storage/documents \
