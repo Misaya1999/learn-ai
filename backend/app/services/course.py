@@ -1,11 +1,16 @@
 import uuid
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.course import Course
 from app.models.user import User
 from app.schemas.course import CourseCreate, CourseUpdate
+
+
+class CourseDeleteConflictError(Exception):
+    pass
 
 
 def create_course(db: Session, course_data: CourseCreate, teacher: User) -> Course:
@@ -34,4 +39,8 @@ def update_course(db: Session, course: Course, course_data: CourseUpdate) -> Cou
 
 def delete_course(db: Session, course: Course) -> None:
     db.delete(course)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise CourseDeleteConflictError from exc

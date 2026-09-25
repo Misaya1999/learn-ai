@@ -1,5 +1,11 @@
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
+let unauthorizedHandler: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler;
+}
+
 export type UserRole = "student" | "teacher";
 
 export interface User {
@@ -275,6 +281,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       detail = (await response.json()).detail;
     } catch {
       detail = undefined;
+    }
+    if (response.status === 401 && new Headers(init.headers).has("Authorization")) {
+      unauthorizedHandler?.();
     }
     throw new ApiError(errorMessage(detail, response.status), response.status);
   }

@@ -23,10 +23,9 @@ interface LessonQuizProps {
   role: UserRole;
   ownsCourse: boolean;
   hasReadyDocuments: boolean;
-  onUnauthorized: () => void;
 }
 
-export function LessonQuiz({ token, lessonId, courseId, role, ownsCourse, hasReadyDocuments, onUnauthorized }: LessonQuizProps) {
+export function LessonQuiz({ token, lessonId, courseId, role, ownsCourse, hasReadyDocuments }: LessonQuizProps) {
   const [quizzes, setQuizzes] = useState<QuizSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -44,12 +43,8 @@ export function LessonQuiz({ token, lessonId, courseId, role, ownsCourse, hasRea
   const [review, setReview] = useState<QuizAttemptReview | null>(null);
 
   const handleApiError = useCallback((caught: unknown, fallback: string): string => {
-    if (caught instanceof ApiError && caught.status === 401) {
-      onUnauthorized();
-      return "";
-    }
     return caught instanceof ApiError ? caught.message : fallback;
-  }, [onUnauthorized]);
+  }, []);
 
   const loadQuizzes = useCallback(async () => {
     setLoading(true);

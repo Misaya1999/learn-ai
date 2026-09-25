@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth-context";
@@ -10,8 +10,7 @@ import { ApiError, createLesson, enrollInCourse, getCourse, listCourseLessons, l
 export default function CourseDetailPage() {
   const params = useParams<{ courseId: string }>();
   const courseId = params.courseId;
-  const router = useRouter();
-  const { user, token, ready, signOut } = useAuth();
+  const { user, token, ready } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [enrolled, setEnrolled] = useState(false);
@@ -25,11 +24,6 @@ export default function CourseDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [enrollmentError, setEnrollmentError] = useState("");
-
-  const handleUnauthorized = useCallback(() => {
-    signOut();
-    router.replace("/login");
-  }, [signOut, router]);
 
   const loadCourse = useCallback(async () => {
     if (!token || !user || !courseId) return;
@@ -46,15 +40,11 @@ export default function CourseDetailPage() {
       setEnrolled(enrollmentData.some((item) => item.course_id === courseId));
       setLessonPosition(String(Math.max(0, ...lessonData.map((lesson) => lesson.position)) + 1));
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) {
-        handleUnauthorized();
-        return;
-      }
       setError(caught instanceof ApiError ? caught.message : "This course could not be loaded.");
     } finally {
       setLoading(false);
     }
-  }, [token, user, courseId, handleUnauthorized]);
+  }, [token, user, courseId]);
 
   useEffect(() => {
     if (ready && token && user) queueMicrotask(() => void loadCourse());
@@ -83,8 +73,7 @@ export default function CourseDetailPage() {
       setLessonPosition(String(Math.max(position, ...lessons.map((item) => item.position)) + 1));
       setShowLessonForm(false);
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) handleUnauthorized();
-      else setFormError(caught instanceof ApiError ? caught.message : "The lesson could not be created.");
+      setFormError(caught instanceof ApiError ? caught.message : "The lesson could not be created.");
     } finally {
       setSubmitting(false);
     }
@@ -98,8 +87,7 @@ export default function CourseDetailPage() {
       await enrollInCourse(token, courseId);
       setEnrolled(true);
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) handleUnauthorized();
-      else if (caught instanceof ApiError && caught.status === 409) setEnrolled(true);
+      if (caught instanceof ApiError && caught.status === 409) setEnrolled(true);
       else setEnrollmentError(caught instanceof ApiError ? caught.message : "Enrollment was not successful.");
     } finally {
       setEnrolling(false);

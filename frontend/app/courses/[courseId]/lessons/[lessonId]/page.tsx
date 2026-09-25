@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { ChangeEvent, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { LessonQuiz } from "@/components/lesson-quiz";
@@ -37,8 +37,7 @@ function formatBytes(value: number): string {
 export default function LessonDetailPage() {
   const params = useParams<{ courseId: string; lessonId: string }>();
   const { courseId, lessonId } = params;
-  const router = useRouter();
-  const { user, token, ready, signOut } = useAuth();
+  const { user, token, ready } = useAuth();
   const fileInput = useRef<HTMLInputElement>(null);
   const [course, setCourse] = useState<Course | null>(null);
   const [lesson, setLesson] = useState<Lesson | null>(null);
@@ -58,11 +57,6 @@ export default function LessonDetailPage() {
   const [tutorError, setTutorError] = useState("");
   const [askingTutor, setAskingTutor] = useState(false);
 
-  const handleUnauthorized = useCallback(() => {
-    signOut();
-    router.replace("/login");
-  }, [signOut, router]);
-
   const refreshDocuments = useCallback(async () => {
     if (!token || !lessonId) return;
     setRefreshing(true);
@@ -71,12 +65,11 @@ export default function LessonDetailPage() {
       const data = await listLessonDocuments(token, lessonId);
       setDocuments(data);
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) handleUnauthorized();
-      else setDocumentsError(caught instanceof ApiError ? caught.message : "Documents could not be loaded.");
+      setDocumentsError(caught instanceof ApiError ? caught.message : "Documents could not be loaded.");
     } finally {
       setRefreshing(false);
     }
-  }, [token, lessonId, handleUnauthorized]);
+  }, [token, lessonId]);
 
   const loadLesson = useCallback(async () => {
     if (!token || !courseId || !lessonId) return;
@@ -96,15 +89,11 @@ export default function LessonDetailPage() {
       setLesson(lessonData);
       setDocuments(documentData);
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) {
-        handleUnauthorized();
-        return;
-      }
       setError(caught instanceof ApiError ? caught.message : "This lesson could not be loaded.");
     } finally {
       setLoading(false);
     }
-  }, [token, courseId, lessonId, handleUnauthorized]);
+  }, [token, courseId, lessonId]);
 
   useEffect(() => {
     if (ready && token && user) queueMicrotask(() => void loadLesson());
@@ -152,12 +141,8 @@ export default function LessonDetailPage() {
       setSelectedFile(null);
       if (fileInput.current) fileInput.current.value = "";
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) {
-        handleUnauthorized();
-      } else {
-        setUploadError(caught instanceof ApiError ? caught.message : "The PDF could not be uploaded.");
-        await refreshDocuments();
-      }
+      setUploadError(caught instanceof ApiError ? caught.message : "The PDF could not be uploaded.");
+      await refreshDocuments();
     } finally {
       setUploading(false);
     }
@@ -173,8 +158,7 @@ export default function LessonDetailPage() {
       setDocuments((current) => current.filter((item) => item.id !== document.id));
       setSuccess(`${document.original_filename} was deleted.`);
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) handleUnauthorized();
-      else setUploadError(caught instanceof ApiError ? caught.message : "The document could not be deleted.");
+      setUploadError(caught instanceof ApiError ? caught.message : "The document could not be deleted.");
     } finally {
       setDeletingId(null);
     }
@@ -192,11 +176,7 @@ export default function LessonDetailPage() {
       const answer = await askLessonQuestion(token, lessonId, normalizedQuestion);
       setTutorAnswer(answer);
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) {
-        handleUnauthorized();
-      } else {
-        setTutorError(caught instanceof ApiError ? caught.message : "The AI Tutor could not answer this question.");
-      }
+      setTutorError(caught instanceof ApiError ? caught.message : "The AI Tutor could not answer this question.");
     } finally {
       setAskingTutor(false);
     }
@@ -303,7 +283,7 @@ export default function LessonDetailPage() {
             {documents.length === 0 ? <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center"><h3 className="font-semibold text-slate-900">No documents yet</h3><p className="mt-2 text-slate-600">{ownsCourse ? "Upload the first PDF learning material for this lesson." : "The teacher has not added any PDF material."}</p></div> : <ul className="mt-6 space-y-4">{documents.map((document) => <li key={document.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-3"><h3 className="truncate font-semibold text-slate-950">{document.original_filename}</h3><span className={`rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide ring-1 ring-inset ${statusStyles[document.status]}`}>{document.status}</span></div><p className="mt-2 text-sm text-slate-500">{formatBytes(document.file_size)} · Uploaded {new Date(document.created_at).toLocaleString()}</p>{document.status === "failed" && <p className="mt-2 text-sm text-red-700">Processing failed. The teacher can delete this record and try another text-based PDF.</p>}{document.status === "processing" && <p className="mt-2 text-sm text-amber-700">Processing is currently in progress.</p>}</div>{ownsCourse && <button type="button" disabled={deletingId !== null} onClick={() => void handleDelete(document)} className="shrink-0 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">{deletingId === document.id ? "Deleting…" : "Delete"}</button>}</div></li>)}</ul>}
           </section>
 
-          {token && user && <LessonQuiz token={token} lessonId={lessonId} courseId={courseId} role={user.role} ownsCourse={ownsCourse} hasReadyDocuments={hasReadyDocuments} onUnauthorized={handleUnauthorized} />}
+          {token && user && <LessonQuiz token={token} lessonId={lessonId} courseId={courseId} role={user.role} ownsCourse={ownsCourse} hasReadyDocuments={hasReadyDocuments} />}
         </>}
       </main>
     </AppShell>

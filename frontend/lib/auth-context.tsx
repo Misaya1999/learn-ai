@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { getCurrentUser, loginAccount, type User } from "./api";
+import { getCurrentUser, loginAccount, setUnauthorizedHandler, type User } from "./api";
 
 const TOKEN_KEY = "learnai_access_token";
 
@@ -25,6 +25,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     setUser(null);
   }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(clearSession);
+    return () => setUnauthorizedHandler(null);
+  }, [clearSession]);
 
   useEffect(() => {
     const storedToken = localStorage.getItem(TOKEN_KEY);

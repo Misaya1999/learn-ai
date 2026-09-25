@@ -25,7 +25,6 @@ import {
 interface AnalyticsProps {
   token: string;
   userId: string;
-  onUnauthorized: () => void;
 }
 
 function formatPercent(value: string | null): string {
@@ -46,7 +45,7 @@ function AnalyticsError({ message, onRetry }: { message: string; onRetry: () => 
   return <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800"><p className="font-semibold">Analytics are unavailable</p><p className="mt-1 text-sm">{message}</p><button type="button" onClick={onRetry} className="mt-4 rounded-lg border border-red-300 px-3 py-2 text-sm font-semibold">Try again</button></div>;
 }
 
-export function StudentAnalyticsDashboard({ token, onUnauthorized }: Omit<AnalyticsProps, "userId">) {
+export function StudentAnalyticsDashboard({ token }: { token: string }) {
   const [overview, setOverview] = useState<StudentAnalyticsOverview | null>(null);
   const [lessons, setLessons] = useState<StudentLessonAnalytics[]>([]);
   const [progress, setProgress] = useState<StudentProgressPoint[]>([]);
@@ -66,12 +65,11 @@ export function StudentAnalyticsDashboard({ token, onUnauthorized }: Omit<Analyt
       setLessons(lessonData);
       setProgress(progressData);
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) onUnauthorized();
-      else setError(caught instanceof ApiError ? caught.message : "Your learning analytics could not be loaded.");
+      setError(caught instanceof ApiError ? caught.message : "Your learning analytics could not be loaded.");
     } finally {
       setLoading(false);
     }
-  }, [token, onUnauthorized]);
+  }, [token]);
 
   useEffect(() => { queueMicrotask(() => void load()); }, [load]);
 
@@ -91,7 +89,7 @@ export function StudentAnalyticsDashboard({ token, onUnauthorized }: Omit<Analyt
   </div>;
 }
 
-export function TeacherAnalyticsDashboard({ token, userId, onUnauthorized }: AnalyticsProps) {
+export function TeacherAnalyticsDashboard({ token, userId }: AnalyticsProps) {
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [overview, setOverview] = useState<CourseAnalyticsOverview | null>(null);
@@ -110,12 +108,11 @@ export function TeacherAnalyticsDashboard({ token, userId, onUnauthorized }: Ana
       setCourses(owned);
       setSelectedCourseId((current) => owned.some((course) => course.id === current) ? current : owned[0]?.id ?? "");
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) onUnauthorized();
-      else setError(caught instanceof ApiError ? caught.message : "Your courses could not be loaded.");
+      setError(caught instanceof ApiError ? caught.message : "Your courses could not be loaded.");
     } finally {
       setLoadingCourses(false);
     }
-  }, [token, userId, onUnauthorized]);
+  }, [token, userId]);
 
   const loadAnalytics = useCallback(async (courseId: string) => {
     setLoadingAnalytics(true);
@@ -129,12 +126,11 @@ export function TeacherAnalyticsDashboard({ token, userId, onUnauthorized }: Ana
       ]);
       setOverview(overviewData); setStudents(studentData); setLessons(lessonData); setQuestions(questionData);
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) onUnauthorized();
-      else setError(caught instanceof ApiError ? caught.message : "Course analytics could not be loaded.");
+      setError(caught instanceof ApiError ? caught.message : "Course analytics could not be loaded.");
     } finally {
       setLoadingAnalytics(false);
     }
-  }, [token, onUnauthorized]);
+  }, [token]);
 
   useEffect(() => { queueMicrotask(() => void loadCourses()); }, [loadCourses]);
   useEffect(() => { if (selectedCourseId) queueMicrotask(() => void loadAnalytics(selectedCourseId)); }, [selectedCourseId, loadAnalytics]);

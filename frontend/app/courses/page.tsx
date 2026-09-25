@@ -9,7 +9,7 @@ import { ApiError, createCourse, listCourses, listMyEnrollments, type Course } f
 
 export default function CoursesPage() {
   const router = useRouter();
-  const { user, token, ready, signOut } = useAuth();
+  const { user, token, ready } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -32,16 +32,11 @@ export default function CoursesPage() {
       setCourses(courseData);
       setEnrolledCourseIds(new Set(enrollmentData.map((item) => item.course_id)));
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) {
-        signOut();
-        router.replace("/login");
-        return;
-      }
       setError(caught instanceof ApiError ? caught.message : "Courses could not be loaded.");
     } finally {
       setLoading(false);
     }
-  }, [token, user, signOut, router]);
+  }, [token, user]);
 
   useEffect(() => {
     if (ready && token && user) queueMicrotask(() => void loadCourses());

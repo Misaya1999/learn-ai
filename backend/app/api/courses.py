@@ -38,5 +38,11 @@ def update_course(
 
 @router.delete("/{course_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_course(db: DatabaseSession, course: OwnedCourse) -> Response:
-    course_service.delete_course(db, course)
+    try:
+        course_service.delete_course(db, course)
+    except course_service.CourseDeleteConflictError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Course cannot be deleted because it has protected learning history",
+        ) from None
     return Response(status_code=status.HTTP_204_NO_CONTENT)
