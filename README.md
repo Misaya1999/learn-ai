@@ -1,6 +1,6 @@
 # LearnAI
 
-LearnAI is a full-stack, AI-assisted learning platform built around teacher-provided course material. Teachers create courses and lessons, upload PDF resources, generate grounded quizzes, and review learning analytics. Enrolled students study lesson material, ask an AI Tutor questions grounded in those documents, take server-graded quizzes, and track their progress.
+LearnAI is a full-stack, AI-assisted learning platform built around teacher-provided course material. Teachers organize courses and lessons, upload PDF resources, generate grounded quizzes, and review learning analytics. LearnAI extracts, chunks, and embeds the uploaded material so enrolled students can ask grounded questions, complete quizzes, and receive server-graded results.
 
 The project demonstrates a modular monolith, role- and ownership-based authorization, PostgreSQL vector retrieval, direct retrieval-augmented generation (RAG), answer-key isolation, migrations, containerized builds, and CI-backed integration testing. It is a portfolio project, not a publicly deployed or production-proven service.
 
@@ -26,6 +26,32 @@ The project demonstrates a modular monolith, role- and ownership-based authoriza
 
 Document embedding, semantic search, AI Tutor answers, and quiz generation require a valid `OPENAI_API_KEY` when invoked. Authentication, course management, enrollment, grading, analytics, health checks, migrations, and automated tests do not require paid provider access.
 
+## Product walkthrough
+
+### Course catalog
+
+![LearnAI course catalog](docs/screenshots/courses.png)
+
+Teachers can create and browse courses from an ownership-aware catalog. The same catalog supports student course discovery while keeping teacher-only actions out of the student workflow.
+
+### Course detail
+
+![LearnAI course detail](docs/screenshots/courses-detail.png)
+
+Each course presents an ordered curriculum with concise lesson previews. Course owners can add lessons and manage the course while authorization remains enforced by the backend.
+
+### Lesson workspace
+
+![LearnAI lesson workspace](docs/screenshots/lesson-detail.png)
+
+The lesson workspace brings lesson content, PDF learning material, document processing readiness, the grounded AI Tutor, and grounded quiz generation into one workflow. AI actions depend on successfully processed `READY` material; this screenshot presents the product interface and does not claim a successful real OpenAI call.
+
+### Teacher analytics
+
+![LearnAI teacher analytics](docs/screenshots/dashboard.png)
+
+Teacher analytics support enrollment counts, submitted attempts, average score, weighted accuracy, lesson performance, and question performance. The screenshot intentionally shows the honest empty-data state rather than fabricated metrics.
+
 ## Architecture
 
 ```text
@@ -33,10 +59,10 @@ Next.js frontend
        |
        | REST + JWT bearer authentication
        v
-FastAPI backend ----------------> OpenAI API
-       |
-       v
-PostgreSQL + pgvector
+FastAPI backend
+       ├── PostgreSQL
+       ├── pgvector
+       └── OpenAI API
 ```
 
 The frontend uses the Next.js App Router. FastAPI coordinates domain services, while SQLAlchemy and Alembic manage persistence and schema evolution. PostgreSQL stores application data and pgvector embeddings. AI integrations use the OpenAI embeddings and Responses APIs through small provider abstractions rather than an orchestration framework.
@@ -44,13 +70,13 @@ The frontend uses the Next.js App Router. FastAPI coordinates domain services, w
 ### RAG flow
 
 ```text
-PDF upload
+PDF
   -> text extraction
-  -> overlapping chunks
+  -> deterministic overlapping chunking
   -> OpenAI embeddings
-  -> pgvector cosine retrieval scoped to one lesson
-  -> bounded, delimited context
-  -> OpenAI Responses API
+  -> pgvector cosine retrieval
+  -> bounded lesson context
+  -> LLM answer
   -> grounded answer + application-controlled sources
 ```
 
@@ -70,6 +96,8 @@ Quiz generation reuses processed lesson material and bounded context. Structured
 - Quiz grading and score calculation happen server-side.
 - Browser origins are restricted through a configured CORS allowlist.
 - Provider failures and protected-history deletion conflicts return sanitized errors.
+- Authenticated frontend `401` responses centrally clear the expired session and return the user to login; `403` responses preserve the session and surface the authorization error.
+- Database constraints protect quiz and learning history; blocked course or lesson deletion returns a sanitized `409 Conflict` rather than silently cascading through protected history.
 
 The browser currently stores the short-lived JWT in `localStorage`. This is an MVP tradeoff that leaves the token exposed if an XSS vulnerability exists; an HttpOnly, Secure, SameSite cookie or BFF design should be evaluated before production use. These controls are not a claim that the application is production-secure.
 
@@ -140,6 +168,16 @@ docker compose down --volumes
 ```
 
 `OPENAI_API_KEY` is optional for startup and non-AI functionality. PDF processing with embeddings, semantic search, AI Tutor answers, and quiz generation require a valid key when used. Real OpenAI end-to-end verification has not yet been completed.
+
+### Optional demo data
+
+After the stack is running and the configured demo teacher account already exists, seed the portfolio courses and lessons with:
+
+```bash
+docker compose exec backend python -m scripts.seed_demo
+```
+
+The script looks up the existing teacher with normalized email `misaya1999@gmail.com`, then idempotently creates or skips the predefined courses and lessons by exact title. It does not create an account, change a password, upload documents, generate embeddings, or create quiz attempts and analytics. If the teacher does not exist or is not a teacher, the script exits without seeding data.
 
 ### Local backend
 
@@ -222,6 +260,7 @@ There is no frontend browser end-to-end suite. Automated tests validate provider
 - JWTs are stored in browser `localStorage`, with no refresh-token flow.
 - Uploaded documents use local filesystem storage, which must be adapted for multi-instance/cloud operation.
 - Paid AI endpoints lack rate limits and provider-budget controls for public exposure.
+- Frontend browser end-to-end automation is not implemented.
 - The project has not been publicly deployed.
 
 ## Deployment status
@@ -308,7 +347,3 @@ Deleting a lesson or course with protected quiz history returns sanitized `409 C
 - `GET /api/v1/courses/{course_id}/analytics/questions`
 
 Student analytics expose only the authenticated student's submitted-attempt data. Teacher analytics require course ownership. Counts return zero where appropriate; averages and percentages without observations return `null`.
-
-## Screenshots
-
-Screenshots will be added after final end-to-end verification.
