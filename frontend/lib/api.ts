@@ -339,6 +339,13 @@ export function createCourse(token: string, input: CourseCreateInput): Promise<C
   });
 }
 
+export function deleteCourse(token: string, courseId: string): Promise<void> {
+  return request<void>(`/api/v1/courses/${courseId}`, {
+    method: "DELETE",
+    headers: bearerHeaders(token),
+  });
+}
+
 export function listCourseLessons(token: string, courseId: string): Promise<Lesson[]> {
   return request<Lesson[]>(`/api/v1/courses/${courseId}/lessons`, { headers: bearerHeaders(token) });
 }

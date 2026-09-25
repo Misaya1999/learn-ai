@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth-context";
-import { ApiError, createLesson, enrollInCourse, getCourse, listCourseLessons, listMyEnrollments, type Course, type Lesson } from "@/lib/api";
+import { ApiError, createLesson, deleteCourse, enrollInCourse, getCourse, listCourseLessons, listMyEnrollments, type Course, type Lesson } from "@/lib/api";
 
 export default function CourseDetailPage() {
   const params = useParams<{ courseId: string }>();
+  const router = useRouter();
   const courseId = params.courseId;
   const { user, token, ready } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
@@ -24,6 +25,9 @@ export default function CourseDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [enrollmentError, setEnrollmentError] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const loadCourse = useCallback(async () => {
     if (!token || !user || !courseId) return;
@@ -94,6 +98,26 @@ export default function CourseDetailPage() {
     }
   }
 
+  async function handleDeleteCourse() {
+    if (!token || !course) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteCourse(token, course.id);
+      router.replace("/courses");
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.status === 409) {
+        setDeleteError("This course cannot be deleted because it has related learning data, such as quizzes or learning history.");
+      } else if (caught instanceof ApiError && caught.status === 403) {
+        setDeleteError("You do not have permission to delete this course.");
+      } else {
+        setDeleteError(caught instanceof ApiError ? caught.message : "The course could not be deleted.");
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const ownsCourse = user?.role === "teacher" && course?.teacher_id === user.id;
 
   return (
@@ -116,6 +140,24 @@ export default function CourseDetailPage() {
 
             {lessons.length === 0 ? <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center"><h3 className="font-semibold text-slate-900">No lessons yet</h3><p className="mt-2 text-slate-600">{ownsCourse ? "Create the first lesson for this course." : "The teacher has not added any lessons."}</p></div> : <ol className="mt-6 space-y-4">{lessons.map((lesson) => <li key={lesson.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><div className="flex gap-4"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-sm font-bold text-indigo-700">{lesson.position}</span><div className="min-w-0 flex-1"><h3 className="text-lg font-semibold text-slate-950">{lesson.title}</h3>{lesson.content ? <p className="mt-2 line-clamp-3 whitespace-pre-line leading-7 text-slate-600">{lesson.content}</p> : <p className="mt-2 text-sm text-slate-500">No lesson content provided.</p>}<Link href={`/courses/${course.id}/lessons/${lesson.id}`} className="mt-4 inline-flex items-center text-sm font-semibold text-indigo-700 hover:text-indigo-800">Open lesson <span aria-hidden="true" className="ml-2">→</span></Link></div></div></li>)}</ol>}
           </section>
+
+          {ownsCourse && <section aria-labelledby="delete-course-heading" className="mt-12 rounded-2xl border border-red-200 bg-red-50/60 p-6 sm:p-8">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+              <div className="max-w-2xl"><p className="text-sm font-bold uppercase tracking-[0.18em] text-red-700">Danger zone</p><h2 id="delete-course-heading" className="mt-2 text-xl font-bold text-slate-950">Delete this course</h2><p className="mt-2 text-sm leading-6 text-slate-700">Deleting a course is destructive and cannot be undone. Courses with protected quiz or learning history cannot be deleted.</p></div>
+              {!confirmingDelete && <button type="button" onClick={() => { setConfirmingDelete(true); setDeleteError(""); }} className="shrink-0 rounded-xl border border-red-300 bg-white px-4 py-2.5 font-semibold text-red-700 hover:bg-red-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600">Delete course</button>}
+            </div>
+
+            {confirmingDelete && <div role="alertdialog" aria-labelledby="confirm-delete-title" aria-describedby="confirm-delete-description" className="mt-6 rounded-xl border border-red-300 bg-white p-5">
+              <h3 id="confirm-delete-title" className="font-bold text-red-800">Permanently delete “{course.title}”?</h3>
+              <p id="confirm-delete-description" className="mt-2 text-sm leading-6 text-slate-700">This action is destructive and cannot be reversed. Confirm only if you intend to remove this course and its deletable content.</p>
+              <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button type="button" disabled={deleting} onClick={() => { setConfirmingDelete(false); setDeleteError(""); }} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">Cancel</button>
+                <button type="button" disabled={deleting} onClick={() => void handleDeleteCourse()} className="rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-400">{deleting ? "Deleting course…" : "Yes, permanently delete"}</button>
+              </div>
+            </div>}
+
+            {deleteError && <p role="alert" className="mt-5 rounded-xl border border-red-300 bg-white px-4 py-3 text-sm font-medium text-red-800">{deleteError}</p>}
+          </section>}
         </>}
       </main>
     </AppShell>
